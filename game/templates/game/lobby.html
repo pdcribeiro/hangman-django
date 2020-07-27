@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Lobby{% endblock %}
+
+{% block content %}
+<div class="lobby">
+  <h1 class="heading">Welcome to my <span class="bloody">hangman</span> game</h1>
+
+  {% if players == 1 %}
+  <span>There is 1 player waiting for you!</span>
+  {% elif players > 1 %}
+  <span>There are {{ players }} players waiting for you!</span>
+  {% endif %}
+
+  <form action="" method="post">
+  {% csrf_token %}
+    <input name="username" class="username" placeholder="username" required autofocus>
+    <input type="submit" value="Join">
+  </form>
+
+  {% for error in errors %}
+    <div class="flash">{{ error }}</div>
+  {% endfor %}
+</div>
+{% endblock %}

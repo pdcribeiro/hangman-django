@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Game{% endblock %}
+
+{% block content %}
+<a class="leave" href="{% url 'leave' %}">Leave game</a>
+<div id="game"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+{% comment %} <script src="{% static 'game.js' %}"></script> {% endcomment %}
+{% endblock %}
