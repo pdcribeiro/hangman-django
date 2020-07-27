@@ -28,7 +28,7 @@ def lobby(request):
         # TODO sanitize username
         username = request.POST.get('username')
 
-        if username is None:
+        if not username:
             errors.append('Please provide a username.')
         elif Player.objects.filter(username=username).count() > 0:
             errors.append(f"'{username}' is already taken.")
@@ -58,12 +58,11 @@ def leave(request):
     player_id = request.session.get('player_id')
     if player_id is not None:
         del request.session['player_id']
-        try:
-            player = Player.objects.get(id=player_id)
+        player_qs = Player.objects.filter(id=player_id)
+        if player_qs.count() == 1:
+            player = player_qs.first()
             player.delete()
             print(f"Player '{player.username}' left the game.")
-        except Player.DoesNotExist:
-            pass
 
     check_end_game(request.session.get('game_id'))
     return redirect('lobby')
