@@ -7,30 +7,27 @@ function useAPI() {
   });
 
   onMounted(() => {
-    const socket = io();
-    // const socket = io(`ws://${window.location.host}/game`);
+    const socket = new ReconnectingWebSocket(`ws://${window.location.host}/`);
     state.socket = socket;
 
-    socket.on('connect_error', error => {
-      console.error('Failed to connect WebSocket :(', error);
-    });
+    socket.onopen = () =>
+      socket.send(JSON.stringify({ action: 'fetch game state' }));
 
-    socket.on('connect', () => socket.emit('fetch game state'));
-
-    socket.on('game state', newGameState => {
-      if (newGameState.winner !== undefined) {
-        state.game.winner = newGameState.winner;
-        setTimeout(() => {
-          state.game = { ...newGameState, winner: undefined };
-        }, 3000);
-      } else {
-        state.game = newGameState;
+    socket.onmessage = event => {
+      const { action, payload: newGameState } = JSON.parse(event.data);
+      if (action === 'provide game state') {
+        if (newGameState.winner === undefined) {
+          state.game.winner = newGameState.winner;
+          setTimeout(() => {
+            state.game = { ...newGameState, winner: undefined };
+          }, 3000);
+        } else {
+          state.game = newGameState;
+        }
       }
-    });
+    };
 
-    socket.on('error', error => {
-      console.error('WebSocket error :(', error);
-    });
+    socket.onerror = error => console.error('WebSocket error.', error);
   });
 
   onUnmounted(() => {
@@ -38,7 +35,9 @@ function useAPI() {
   });
 
   function tryLetter(letter) {
-    state.socket.emit('try letter', letter);
+    state.socket.send(
+      JSON.stringify({ action: 'try letter', payload: letter })
+    );
   }
 
   return { gameState: state.game, tryLetter };
