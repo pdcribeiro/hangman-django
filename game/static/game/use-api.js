@@ -1,28 +1,31 @@
-const { onMounted, onUnmounted, reactive } = VueCompositionAPI;
+const { onMounted, onUnmounted, reactive, ref } = VueCompositionAPI;
 
 function useAPI() {
-  const state = reactive({
-    socket: null,
-    game: null,
+  const webSocket = ref(null);
+  const gameState = reactive({
+    chances: null,
+    word: null,
+    letters: null,
+    winner: undefined,
   });
 
   onMounted(() => {
-    const socket = new ReconnectingWebSocket(`ws://${window.location.host}/`);
-    state.socket = socket;
-
-    socket.onopen = () =>
-      socket.send(JSON.stringify({ action: 'fetch game state' }));
+    const uri = `ws://${window.location.host}/ws/game/`;
+    const socket = new ReconnectingWebSocket(uri);
+    webSocket.value = socket;
 
     socket.onmessage = event => {
-      const { action, payload: newGameState } = JSON.parse(event.data);
-      if (action === 'provide game state') {
-        if (newGameState.winner === undefined) {
-          state.game.winner = newGameState.winner;
+      const newState = JSON.parse(event.data);
+      if (validateGameState(newState)) {
+        newState.word = newState.word.split('');
+        newState.letters = newState.letters.split('');
+        if (newState.winner !== undefined) {
+          gameState.winner = newState.winner;
           setTimeout(() => {
-            state.game = { ...newGameState, winner: undefined };
+            Object.assign(gameState, newState, { winner: undefined });
           }, 3000);
         } else {
-          state.game = newGameState;
+          Object.assign(gameState, newState);
         }
       }
     };
@@ -31,14 +34,20 @@ function useAPI() {
   });
 
   onUnmounted(() => {
-    state.socket.close();
+    webSocket.value.close();
   });
 
   function tryLetter(letter) {
-    state.socket.send(
-      JSON.stringify({ action: 'try letter', payload: letter })
-    );
+    webSocket.value.send(JSON.stringify({ letter }));
   }
 
-  return { gameState: state.game, tryLetter };
+  return { gameState, tryLetter };
+}
+
+function validateGameState(state) {
+  return (
+    typeof state.chances == 'number' &&
+    typeof state.word == 'string' &&
+    typeof state.letters == 'string'
+  );
 }

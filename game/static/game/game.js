@@ -19,7 +19,7 @@ Vue.component('Game', {
       if (
         event.keyCode >= 65 &&
         event.keyCode <= 90 &&
-        (gameState === undefined || gameState.winner === undefined)
+        (!gameState.chances || gameState.winner === undefined)
       ) {
         tryLetter(event.key.toUpperCase());
       }
@@ -27,8 +27,7 @@ Vue.component('Game', {
   },
 
   template: `
-    <div v-if="gameState">
-      <h1>Game</h1>
+    <Fragment v-if="gameState.chances">
       <Drawing :chancesLeft="gameState.chances" />
       <Word v-bind="gameState" />
       <WrongLetters v-bind="gameState" />
@@ -36,7 +35,7 @@ Vue.component('Game', {
         v-if="gameState.winner !== undefined"
         :winner="gameState.winner"
       />
-    </div>
+    </Fragment>
   `,
 });
 
@@ -78,13 +77,11 @@ Vue.component('Letter', {
   template: `
     <span
       class="letter"
-      style="wrong && {
+      :style="wrong && {
         textDecoration: 'line-through',
         color: '#940000',
       }"
-    >
-      {{ letter }}
-    </span>
+    >{{ letter }}</span>
   `,
 });
 
@@ -94,11 +91,16 @@ Vue.component('WrongLetters', {
     letters: Array,
   },
 
+  computed: {
+    wrongLetters: function () {
+      return this.letters.filter(letter => !this.word.includes(letter));
+    }
+  },
+
   template: `
     <div class="wrong-letters">
       <Letter
-        v-for="letter in letters"
-        v-if="!word.includes(letter)"
+        v-for="letter in wrongLetters"
         :letter="letter" :wrong="true" :key="letter"
       />
     </div>
@@ -107,7 +109,7 @@ Vue.component('WrongLetters', {
 
 Vue.component('GameOver', {
   props: {
-    winner: Boolean,
+    winner: String,
   },
 
   template: `

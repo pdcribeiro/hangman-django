@@ -1,8 +1,8 @@
-import datetime
+# import datetime
 import functools
 
 from django.shortcuts import redirect, render
-from django.utils import timezone
+# from django.utils import timezone
 
 from .models import Game, Player
 
@@ -10,12 +10,25 @@ from .models import Game, Player
 def login_required(view):
     @functools.wraps(view)
     def wrapped_view(request, *args, **kwargs):
-        if request.session.get('player_id') is None:
+        if validate_player(request.session) is None:
             return redirect('lobby')
-
-        return view(request, *args, **kwargs)
+        else:
+            return view(request, *args, **kwargs)
 
     return wrapped_view
+
+
+def validate_player(session):
+    player_id = session.get('player_id')
+    if player_id is None:
+        return None
+
+    player_exists = Player.objects.filter(id=player_id).count() == 1
+    if not player_exists:
+        del session['player_id']
+        return None
+
+    return player_id
 
 
 def lobby(request):
@@ -54,26 +67,11 @@ def room(request):
 
 
 @login_required
-def leave(request):
+def leave(request, player=None):
     player_id = request.session.get('player_id')
-    if player_id is not None:
-        del request.session['player_id']
-        player_qs = Player.objects.filter(id=player_id)
-        if player_qs.count() == 1:
-            player = player_qs.first()
-            player.delete()
-            print(f"Player '{player.username}' left the game.")
+    del request.session['player_id']
+    Player.objects.filter(id=player_id).delete()
+    print(f"Player with id {player_id} left the game.")
 
-    check_end_game(request.session.get('game_id'))
+    # check_end_game(request.session.get('game_id'))
     return redirect('lobby')
-
-
-def check_end_game(game_id):
-    now = timezone.now()
-    yesterday = now - datetime.timedelta(days=1)
-    Player.objects.filter(active=False, joined__lt=yesterday).delete()
-
-    # Set game end timestamp
-    players = Player.objects.count()
-    if players == 0 and game_id is not None:  # players == 1?
-        Game.objects.filter(id=game_id).update(ended=now)
